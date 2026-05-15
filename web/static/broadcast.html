@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Command Broadcast</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #0d0d14;
+      --bg-tertiary: #12121a;
+      --bg-card: #15151f;
+      --accent-primary: #00f0ff;
+      --accent-secondary: #ff00aa;
+      --accent-tertiary: #7b2dff;
+      --accent-success: #00ff88;
+      --accent-danger: #ff3366;
+      --accent-warning: #ffaa00;
+      --text-primary: #ffffff;
+      --text-secondary: rgba(255, 255, 255, 0.7);
+      --text-muted: rgba(255, 255, 255, 0.4);
+      --glow-primary: 0 0 20px rgba(0, 240, 255, 0.5);
+      --glow-secondary: 0 0 20px rgba(255, 0, 170, 0.5);
+      --border-color: rgba(0, 240, 255, 0.2);
+      --font-display: 'Orbitron', sans-serif;
+      --font-body: 'Rajdhani', sans-serif;
+      --font-mono: 'Share Tech Mono', monospace;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-y: auto;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    .cyber-bg {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse at 20% 0%, rgba(0, 240, 255, 0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 100%, rgba(255, 0, 170, 0.06) 0%, transparent 60%),
+        var(--bg-primary);
+    }
+    .cyber-bg::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background:
+        repeating-linear-gradient(0deg, transparent, transparent 49px, rgba(0, 240, 255, 0.03) 49px, rgba(0, 240, 255, 0.03) 50px),
+        repeating-linear-gradient(90deg, transparent, transparent 49px, rgba(0, 240, 255, 0.03) 49px, rgba(0, 240, 255, 0.03) 50px);
+    }
+    .cyber-bg::after {
+      content: '';
+      position: absolute;
+      top: -10%; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.3), transparent);
+      animation: scanLine 4s linear infinite;
+    }
+    @keyframes scanLine { 0% { top: -10%; } 100% { top: 110%; } }
+
+    /* Navigation bar */
+    .mode-nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      padding: 0.8rem 0;
+      background: rgba(10, 10, 15, 0.92);
+      border-bottom: 1px solid var(--border-color);
+      backdrop-filter: blur(10px);
+    }
+    .mode-btn {
+      font-family: var(--font-display);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      padding: 0.5rem 1.5rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: all 0.3s;
+    }
+    .mode-btn:first-child { border-radius: 4px 0 0 4px; }
+    .mode-btn:last-child { border-radius: 0 4px 4px 0; }
+    .mode-btn.active {
+      color: var(--accent-secondary);
+      border-color: var(--accent-secondary);
+      background: rgba(255, 0, 170, 0.1);
+    }
+    .mode-btn:hover:not(.active) {
+      color: var(--text-secondary);
+      border-color: rgba(255,255,255,0.2);
+    }
+
+    /* Main container */
+    .container {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      padding: 4.5rem 1.5rem 3rem;
+      max-width: 1600px;
+      width: 100%;
+      margin: auto;
+    }
+
+    /* Header */
+    .header { text-align: center; }
+    .badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent-secondary);
+      border: 1px solid rgba(255, 0, 170, 0.3);
+      background: rgba(255, 0, 170, 0.08);
+      padding: 0.3rem 1rem;
+      border-radius: 2px;
+      margin-bottom: 1rem;
+    }
+    .title {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      background: linear-gradient(135deg, var(--accent-secondary), var(--accent-tertiary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.2;
+    }
+    .subtitle {
+      font-family: var(--font-body);
+      font-size: 1.05rem;
+      color: var(--text-secondary);
+      margin-top: 0.5rem;
+      font-weight: 400;
+    }
+
+    /* Status bar */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    .status-dot.ready { background: var(--accent-primary); box-shadow: 0 0 8px rgba(0, 240, 255, 0.6); }
+    .status-dot.active { background: var(--accent-success); box-shadow: 0 0 8px rgba(0, 255, 136, 0.6); animation: pulse 1.5s infinite; }
+    .status-dot.recording { background: var(--accent-danger); box-shadow: 0 0 12px rgba(255, 51, 102, 0.8); animation: pulse 0.8s infinite; }
+    .status-dot.processing { background: var(--accent-warning); box-shadow: 0 0 8px rgba(255, 170, 0, 0.6); animation: pulse 1s infinite; }
+    .status-dot.error { background: var(--accent-danger); box-shadow: 0 0 8px rgba(255, 51, 102, 0.6); }
+    .status-text { color: var(--text-secondary); }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    /* GPU bar */
+    .gpu-inline-bar { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.6rem; }
+    .gpu-inline-bar .gpu-label { font-family: var(--font-display); font-size: 0.5rem; font-weight: 600; letter-spacing: 0.1em; color: #00ff9d; display: flex; align-items: center; gap: 0.3rem; }
+    .gpu-inline-bar .gpu-pulse { width: 5px; height: 5px; border-radius: 50%; background: #00ff9d; animation: gpuPulse 1s ease-in-out infinite; }
+    @keyframes gpuPulse { 0%, 100% { opacity: 0.4; box-shadow: 0 0 4px #00ff9d; } 50% { opacity: 1; box-shadow: 0 0 10px #00ff9d; } }
+    .gpu-inline-bar .gpu-track { flex: 1; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; min-width: 60px; }
+    .gpu-inline-bar .gpu-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #00ff9d, #00aaff); border-radius: 2px; transition: width 0.3s; box-shadow: 0 0 6px rgba(0,255,157,0.4); }
+    .gpu-inline-bar .gpu-value { font-family: var(--font-mono); font-size: 0.6rem; color: #00ff9d; min-width: 32px; text-align: right; }
+
+    /* Record button */
+    .record-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+    .record-btn {
+      width: 120px; height: 120px;
+      border-radius: 50%;
+      border: 2px solid var(--border-color);
+      background: var(--bg-card);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.3s, box-shadow 0.08s, transform 0.08s;
+      position: relative;
+      outline: none;
+    }
+    .record-btn:hover {
+      border-color: var(--accent-secondary);
+      box-shadow: var(--glow-secondary);
+      transform: scale(1.05);
+    }
+    .record-btn.recording {
+      border-color: var(--accent-danger);
+      box-shadow: 0 0 30px rgba(255, 51, 102, 0.4), 0 0 60px rgba(255, 51, 102, 0.15);
+      animation: recordPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes recordPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    .record-btn.recording::before, .record-btn.recording::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 51, 102, 0.3);
+      animation: ringExpand 2s ease-out infinite;
+    }
+    .record-btn.recording::before { width: 140px; height: 140px; }
+    .record-btn.recording::after { width: 160px; height: 160px; animation-delay: 0.5s; }
+    @keyframes ringExpand {
+      0% { opacity: 0.6; transform: scale(0.9); }
+      100% { opacity: 0; transform: scale(1.3); }
+    }
+    .record-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+    .record-icon {
+      width: 40px; height: 40px;
+      fill: var(--accent-secondary);
+      transition: fill 0.3s;
+    }
+    .record-btn.recording .record-icon { fill: var(--accent-danger); }
+    .record-label {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    /* Level meter */
+    .level-meter {
+      display: flex;
+      gap: 3px;
+      align-items: flex-end;
+      height: 35px;
+    }
+    .level-bar {
+      width: 4px;
+      background: var(--accent-secondary);
+      border-radius: 2px;
+      transition: height 0.08s;
+      min-height: 3px;
+      opacity: 0.3;
+    }
+    .level-bar.active { opacity: 1; }
+
+    /* English transcript */
+    .source-panel {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1.2rem 1.5rem;
+      display: none;
+      animation: fadeSlideIn 0.4s ease;
+    }
+    .source-panel.visible { display: block; }
+    .source-panel-header {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--accent-primary);
+      margin-bottom: 0.6rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .source-panel-header::before { content: '>'; color: var(--accent-secondary); }
+    .source-text {
+      font-family: var(--font-body);
+      font-size: 1.15rem;
+      line-height: 1.5;
+      color: var(--text-primary);
+    }
+
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Language cards grid */
+    .lang-grid {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.8rem;
+    }
+    .lang-section-divider {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      padding: 0.3rem 0;
+    }
+    .lang-section-divider::before,
+    .lang-section-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .lang-section-label {
+      font-family: var(--font-mono);
+      font-size: 0.5rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    .lang-card.text-only {
+      padding: 0.7rem 1rem;
+      gap: 0.4rem;
+    }
+    .lang-card.text-only .lang-text {
+      font-size: 0.85rem;
+      min-height: 1.5em;
+    }
+    .lang-card.text-only .lang-controls {
+      opacity: 0.4;
+    }
+    .text-only-label {
+      font-family: var(--font-mono);
+      font-size: 0.55rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .lang-card {
+      background: var(--bg-card);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      opacity: 0.4;
+      transition: all 0.4s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .lang-card.ready {
+      opacity: 1;
+      border-color: rgba(0, 240, 255, 0.15);
+    }
+    .lang-card.translating {
+      opacity: 0.7;
+      border-color: rgba(255, 170, 0, 0.3);
+    }
+    .lang-card.translated {
+      opacity: 1;
+      border-color: rgba(0, 255, 136, 0.2);
+      animation: fadeSlideIn 0.4s ease;
+    }
+    .lang-card.playing {
+      border-color: var(--accent-secondary);
+      box-shadow: 0 0 20px rgba(255, 0, 170, 0.2), inset 0 0 30px rgba(255, 0, 170, 0.03);
+    }
+    .lang-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .lang-card-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .lang-flag { width: 24px; height: 16px; object-fit: cover; border-radius: 2px; }
+    .lang-name {
+      font-family: var(--font-display);
+      font-size: 0.6rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+    .lang-status {
+      font-family: var(--font-mono);
+      font-size: 0.55rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      transition: color 0.3s;
+    }
+    .lang-card.translating .lang-status { color: var(--accent-warning); }
+    .lang-card.translated .lang-status { color: var(--accent-success); }
+    .lang-card.tts-generating .lang-status { color: var(--accent-warning); }
+    .lang-card.tts-ready .lang-status { color: var(--accent-success); }
+    .lang-text {
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      line-height: 1.4;
+      color: var(--text-primary);
+      min-height: 2.5em;
+    }
+    .lang-text.placeholder {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+    .lang-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .play-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.35rem 0.8rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      background: var(--bg-tertiary);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .play-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    .play-btn:not(:disabled):hover {
+      border-color: var(--accent-secondary);
+      color: var(--accent-secondary);
+      background: rgba(255, 0, 170, 0.08);
+    }
+    .play-btn.playing {
+      border-color: var(--accent-secondary);
+      color: var(--accent-secondary);
+      background: rgba(255, 0, 170, 0.12);
+    }
+    .play-icon {
+      width: 12px; height: 12px;
+      fill: currentColor;
+    }
+
+    /* Audio bars animation */
+    .audio-bars {
+      display: flex;
+      gap: 2px;
+      align-items: flex-end;
+      height: 14px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .audio-bars.active { opacity: 1; }
+    .audio-bars span {
+      width: 2px;
+      background: var(--accent-secondary);
+      border-radius: 1px;
+      animation: audioBar 0.8s ease-in-out infinite;
+    }
+    .audio-bars span:nth-child(1) { animation-delay: 0s; }
+    .audio-bars span:nth-child(2) { animation-delay: 0.15s; }
+    .audio-bars span:nth-child(3) { animation-delay: 0.3s; }
+    .audio-bars span:nth-child(4) { animation-delay: 0.45s; }
+    @keyframes audioBar {
+      0%, 100% { height: 4px; }
+      50% { height: 14px; }
+    }
+
+    /* Broadcast All button */
+    .broadcast-section {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      display: none;
+    }
+    .broadcast-section.visible { display: flex; }
+    .broadcast-btn {
+      font-family: var(--font-display);
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      padding: 0.8rem 2.5rem;
+      border: 2px solid var(--accent-secondary);
+      border-radius: 6px;
+      background: rgba(255, 0, 170, 0.08);
+      color: var(--accent-secondary);
+      cursor: pointer;
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+    .broadcast-btn:hover {
+      background: rgba(255, 0, 170, 0.15);
+      box-shadow: 0 0 30px rgba(255, 0, 170, 0.3), 0 0 60px rgba(255, 0, 170, 0.1);
+      transform: translateY(-2px);
+    }
+    .broadcast-btn:active { transform: translateY(0); }
+    .broadcast-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+    .broadcast-btn.broadcasting {
+      animation: broadcastGlow 1.5s ease-in-out infinite;
+    }
+    @keyframes broadcastGlow {
+      0%, 100% { box-shadow: 0 0 20px rgba(255, 0, 170, 0.3); }
+      50% { box-shadow: 0 0 40px rgba(255, 0, 170, 0.5), 0 0 80px rgba(255, 0, 170, 0.2); }
+    }
+
+    /* Footer */
+    .footer {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+      .lang-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 900px) {
+      .lang-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 520px) {
+      .title { font-size: 1.5rem; }
+      .lang-grid { grid-template-columns: 1fr; }
+      .record-btn { width: 100px; height: 100px; }
+      .record-icon { width: 32px; height: 32px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="cyber-bg"></div>
+
+  <nav class="mode-nav">
+    <a href="#" class="mode-btn" id="navTranslate">TRANSLATE</a>
+    <a href="#" class="mode-btn active" id="navBroadcast">BROADCAST</a>
+  </nav>
+
+  <div class="container">
+    <div class="header">
+      <div class="badge">English to Many</div>
+      <h1 class="title">COMMAND BROADCAST</h1>
+      <p class="subtitle">Speak once. Reach everyone.</p>
+    </div>
+
+    <div class="status-bar">
+      <div class="status-dot" id="statusDot"></div>
+      <span class="status-text" id="statusText">READY</span>
+      <div class="gpu-inline-bar">
+        <span class="gpu-label"><span class="gpu-pulse"></span>GPU</span>
+        <div class="gpu-track"><div class="gpu-fill"></div></div>
+        <span class="gpu-value">0%</span>
+      </div>
+    </div>
+
+    <div class="record-area">
+      <button class="record-btn" id="recordBtn" title="Click to record">
+        <svg class="record-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+          <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+        </svg>
+      </button>
+
+      <div class="level-meter" id="levelMeter">
+        <div class="level-bar"></div><div class="level-bar"></div><div class="level-bar"></div>
+        <div class="level-bar"></div><div class="level-bar"></div><div class="level-bar"></div>
+        <div class="level-bar"></div><div class="level-bar"></div><div class="level-bar"></div>
+        <div class="level-bar"></div><div class="level-bar"></div><div class="level-bar"></div>
+        <div class="level-bar"></div><div class="level-bar"></div><div class="level-bar"></div>
+        <div class="level-bar"></div><div class="level-bar"></div><div class="level-bar"></div>
+      </div>
+
+      <span class="record-label" id="recordLabel">Click to record</span>
+    </div>
+
+    <!-- English transcript -->
+    <div class="source-panel" id="sourcePanel">
+      <div class="source-panel-header">English — Source</div>
+      <div class="source-text" id="sourceText"></div>
+    </div>
+
+    <!-- Language cards -->
+    <div class="lang-grid" id="langGrid"></div>
+
+    <!-- Broadcast All -->
+    <div class="broadcast-section" id="broadcastSection">
+      <button class="broadcast-btn" id="broadcastBtn" disabled>BROADCAST ALL</button>
+    </div>
+
+    <div class="footer">
+      Whisper STT &middot; NLLB-200 Translation &middot; Kokoro TTS &middot; All Local on GB10
+    </div>
+  </div>
+
+  <script>
+    // -----------------------------------------------------------------------
+    // Configuration
+    // -----------------------------------------------------------------------
+    const LANG_CONFIG = {
+      // TTS-capable (Kokoro voices)
+      es: { name: 'Spanish',     cc: 'es' },
+      fr: { name: 'French',      cc: 'fr' },
+      zh: { name: 'Chinese',     cc: 'cn' },
+      it: { name: 'Italian',     cc: 'it' },
+      pt: { name: 'Portuguese',  cc: 'br' },
+      ja: { name: 'Japanese',    cc: 'jp' },
+      hi: { name: 'Hindi',       cc: 'in' },
+      // Major world languages
+      ar: { name: 'Arabic',      cc: 'sa' },
+      bn: { name: 'Bengali',     cc: 'bd' },
+      de: { name: 'German',      cc: 'de' },
+      ru: { name: 'Russian',     cc: 'ru' },
+      ko: { name: 'Korean',      cc: 'kr' },
+      tr: { name: 'Turkish',     cc: 'tr' },
+      id: { name: 'Indonesian',  cc: 'id' },
+      vi: { name: 'Vietnamese',  cc: 'vn' },
+      th: { name: 'Thai',        cc: 'th' },
+      ur: { name: 'Urdu',        cc: 'pk' },
+      fa: { name: 'Persian',     cc: 'ir' },
+      ms: { name: 'Malay',       cc: 'my' },
+      tl: { name: 'Filipino',    cc: 'ph' },
+      sw: { name: 'Swahili',     cc: 'ke' },
+      // South Asian
+      ta: { name: 'Tamil',       cc: 'in' },
+      te: { name: 'Telugu',      cc: 'in' },
+      mr: { name: 'Marathi',     cc: 'in' },
+      gu: { name: 'Gujarati',    cc: 'in' },
+      kn: { name: 'Kannada',     cc: 'in' },
+      ml: { name: 'Malayalam',   cc: 'in' },
+      pa: { name: 'Punjabi',     cc: 'in' },
+      ne: { name: 'Nepali',      cc: 'np' },
+      si: { name: 'Sinhala',     cc: 'lk' },
+      // European
+      pl: { name: 'Polish',      cc: 'pl' },
+      uk: { name: 'Ukrainian',   cc: 'ua' },
+      nl: { name: 'Dutch',       cc: 'nl' },
+      el: { name: 'Greek',       cc: 'gr' },
+      sv: { name: 'Swedish',     cc: 'se' },
+      ro: { name: 'Romanian',    cc: 'ro' },
+      cs: { name: 'Czech',       cc: 'cz' },
+      hu: { name: 'Hungarian',   cc: 'hu' },
+      fi: { name: 'Finnish',     cc: 'fi' },
+      da: { name: 'Danish',      cc: 'dk' },
+      no: { name: 'Norwegian',   cc: 'no' },
+      bg: { name: 'Bulgarian',   cc: 'bg' },
+      hr: { name: 'Croatian',    cc: 'hr' },
+      sr: { name: 'Serbian',     cc: 'rs' },
+      sk: { name: 'Slovak',      cc: 'sk' },
+      lt: { name: 'Lithuanian',  cc: 'lt' },
+      lv: { name: 'Latvian',     cc: 'lv' },
+      et: { name: 'Estonian',    cc: 'ee' },
+      sl: { name: 'Slovenian',   cc: 'si' },
+      sq: { name: 'Albanian',    cc: 'al' },
+      mk: { name: 'Macedonian',  cc: 'mk' },
+      bs: { name: 'Bosnian',     cc: 'ba' },
+      is: { name: 'Icelandic',   cc: 'is' },
+      ca: { name: 'Catalan',     cc: 'ad' },
+      gl: { name: 'Galician',    cc: 'es' },
+      cy: { name: 'Welsh',       cc: 'gb' },
+      ga: { name: 'Irish',       cc: 'ie' },
+      mt: { name: 'Maltese',     cc: 'mt' },
+      he: { name: 'Hebrew',      cc: 'il' },
+      af: { name: 'Afrikaans',   cc: 'za' },
+      // African
+      am: { name: 'Amharic',     cc: 'et' },
+      ha: { name: 'Hausa',       cc: 'ng' },
+      yo: { name: 'Yoruba',      cc: 'ng' },
+      ig: { name: 'Igbo',        cc: 'ng' },
+      zu: { name: 'Zulu',        cc: 'za' },
+      xh: { name: 'Xhosa',      cc: 'za' },
+      so: { name: 'Somali',      cc: 'so' },
+      // East/Central Asian & Turkic
+      my: { name: 'Burmese',     cc: 'mm' },
+      km: { name: 'Khmer',       cc: 'kh' },
+      lo: { name: 'Lao',         cc: 'la' },
+      mn: { name: 'Mongolian',   cc: 'mn' },
+      ka: { name: 'Georgian',    cc: 'ge' },
+      hy: { name: 'Armenian',    cc: 'am' },
+      az: { name: 'Azerbaijani', cc: 'az' },
+      uz: { name: 'Uzbek',       cc: 'uz' },
+      kk: { name: 'Kazakh',      cc: 'kz' },
+      ps: { name: 'Pashto',      cc: 'af' },
+      tg: { name: 'Tajik',       cc: 'tj' },
+    };
+
+    function flagUrl(cc) {
+      return `https://flagcdn.com/w40/${cc}.png`;
+    }
+
+    const TTS_LANGS = new Set(['es', 'fr', 'zh', 'it', 'pt', 'ja', 'hi']);
+
+    const TARGET_LANGS = [
+      // TTS (Kokoro)
+      'es', 'fr', 'zh', 'it', 'pt', 'ja', 'hi',
+      // Major world
+      'ar', 'bn', 'de', 'ru', 'ko', 'tr', 'id',
+      'vi', 'th', 'ur', 'fa', 'ms', 'tl', 'sw',
+      // South Asian
+      'ta', 'te', 'mr', 'gu', 'kn', 'ml', 'pa', 'ne', 'si',
+      // European
+      'pl', 'uk', 'nl', 'el', 'sv', 'ro', 'cs', 'hu', 'fi',
+      'da', 'no', 'bg', 'hr', 'sr', 'sk', 'lt', 'lv', 'et',
+      'sl', 'sq', 'mk', 'bs', 'is', 'ca', 'gl', 'cy', 'ga',
+      'mt', 'he', 'af',
+      // African
+      'am', 'ha', 'yo', 'ig', 'zu', 'xh', 'so',
+      // East/Central Asian & Turkic
+      'my', 'km', 'lo', 'mn', 'ka', 'hy',
+      'az', 'uz', 'kk', 'ps', 'tg',
+    ];
+
+    // Derive base path for navigation and API calls
+    const BASE_PATH = window.location.pathname.replace(/\/broadcast\/?$/, '').replace(/\/+$/, '');
+
+    // Navigation
+    document.getElementById('navTranslate').href = BASE_PATH + '/';
+    document.getElementById('navBroadcast').href = BASE_PATH + '/broadcast';
+
+    // -----------------------------------------------------------------------
+    // State
+    // -----------------------------------------------------------------------
+    const langCards = {};  // lang -> { card, textEl, statusEl, playBtn, audioBars, audioUrl, audioBlob }
+    let isRecording = false;
+    let isProcessing = false;
+    let mediaRecorder = null;
+    let mediaStream = null;
+    let audioCtx = null;
+    let analyser = null;
+    let recordingChunks = [];
+    let silenceTimeout = null;
+    let currentlyPlaying = null;  // Audio element currently playing
+    let isBroadcasting = false;
+
+    // DOM refs
+    const recordBtn = document.getElementById('recordBtn');
+    const recordLabel = document.getElementById('recordLabel');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const sourcePanel = document.getElementById('sourcePanel');
+    const sourceText = document.getElementById('sourceText');
+    const langGrid = document.getElementById('langGrid');
+    const broadcastSection = document.getElementById('broadcastSection');
+    const broadcastBtn = document.getElementById('broadcastBtn');
+    const levelMeter = document.getElementById('levelMeter');
+    const bars = levelMeter.querySelectorAll('.level-bar');
+
+    // -----------------------------------------------------------------------
+    // Initialize language cards
+    // -----------------------------------------------------------------------
+    // Region boundaries for section dividers
+    const REGION_DIVIDERS = {
+      'ar': 'Translation Only — Major World Languages',
+      'ta': 'South Asian',
+      'pl': 'European',
+      'am': 'African',
+      'my': 'East & Central Asian',
+    };
+
+    function initLangCards() {
+      langGrid.innerHTML = '';
+      TARGET_LANGS.forEach((lang, idx) => {
+        const cfg = LANG_CONFIG[lang];
+        const hasTTS = TTS_LANGS.has(lang);
+
+        // Add region section divider
+        if (REGION_DIVIDERS[lang]) {
+          const divider = document.createElement('div');
+          divider.className = 'lang-section-divider';
+          divider.innerHTML = `<span class="lang-section-label">${REGION_DIVIDERS[lang]}</span>`;
+          langGrid.appendChild(divider);
+        }
+
+        const card = document.createElement('div');
+        card.className = 'lang-card' + (hasTTS ? '' : ' text-only');
+        card.dataset.lang = lang;
+        card.style.animationDelay = (Math.min(idx, 20) * 0.03) + 's';
+        card.innerHTML = `
+          <div class="lang-card-header">
+            <div class="lang-card-title">
+              <img class="lang-flag" src="${flagUrl(cfg.cc)}" alt="${cfg.cc}" loading="lazy">
+              <span class="lang-name">${cfg.name}</span>
+            </div>
+            <span class="lang-status">Waiting</span>
+          </div>
+          <div class="lang-text placeholder">—</div>
+          <div class="lang-controls">
+            ${hasTTS ? `
+              <button class="play-btn" disabled>
+                <svg class="play-icon" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+                Play
+              </button>
+              <div class="audio-bars">
+                <span></span><span></span><span></span><span></span>
+              </div>
+            ` : `<span class="text-only-label">Text only</span>`}
+          </div>
+        `;
+        langGrid.appendChild(card);
+
+        langCards[lang] = {
+          card,
+          textEl: card.querySelector('.lang-text'),
+          statusEl: card.querySelector('.lang-status'),
+          playBtn: card.querySelector('.play-btn'),
+          audioBars: card.querySelector('.audio-bars'),
+          audioUrl: null,
+          audioBlob: null,
+          hasTTS: hasTTS,
+        };
+
+        if (hasTTS) {
+          langCards[lang].playBtn.addEventListener('click', () => playLang(lang));
+        }
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // Status helpers
+    // -----------------------------------------------------------------------
+    function setStatus(state, text) {
+      statusDot.className = 'status-dot ' + state;
+      statusText.textContent = text;
+    }
+
+    function escapeHtml(text) {
+      const d = document.createElement('div');
+      d.textContent = text;
+      return d.innerHTML;
+    }
+
+    // -----------------------------------------------------------------------
+    // Level meter
+    // -----------------------------------------------------------------------
+    let animFrame = null;
+
+    function updateLevelMeter() {
+      if (!analyser || !isRecording) {
+        bars.forEach(b => { b.style.height = '3px'; b.classList.remove('active'); });
+        return;
+      }
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(dataArray);
+      const numBars = bars.length;
+      const blockSize = Math.floor(dataArray.length / numBars);
+      for (let i = 0; i < numBars; i++) {
+        let sum = 0;
+        for (let j = 0; j < blockSize; j++) {
+          sum += dataArray[i * blockSize + j];
+        }
+        const avg = sum / blockSize / 255;
+        const height = Math.max(3, Math.min(35, avg * 120));
+        bars[i].style.height = height + 'px';
+        bars[i].classList.toggle('active', avg > 0.05);
+      }
+      animFrame = requestAnimationFrame(updateLevelMeter);
+    }
+
+    function clearLevelMeter() {
+      if (animFrame) cancelAnimationFrame(animFrame);
+      animFrame = null;
+      bars.forEach(b => { b.style.height = '3px'; b.classList.remove('active'); });
+    }
+
+    // -----------------------------------------------------------------------
+    // Recording
+    // -----------------------------------------------------------------------
+    async function startRecording() {
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true }
+        });
+
+        // Set up analyser for waveform
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        const source = audioCtx.createMediaStreamSource(mediaStream);
+        source.connect(analyser);
+
+        // MediaRecorder
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus' : 'audio/webm';
+        mediaRecorder = new MediaRecorder(mediaStream, { mimeType });
+        recordingChunks = [];
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) recordingChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(recordingChunks, { type: mediaRecorder.mimeType });
+          recordingChunks = [];
+          processRecording(blob);
+        };
+
+        mediaRecorder.start(250);  // Collect data every 250ms
+        isRecording = true;
+
+        // Reset UI
+        resetResults();
+        recordBtn.classList.add('recording');
+        recordLabel.textContent = 'Click to stop';
+        setStatus('recording', 'RECORDING...');
+        updateLevelMeter();
+
+        // Auto-stop after 30 seconds
+        silenceTimeout = setTimeout(() => {
+          if (isRecording) stopRecording();
+        }, 30000);
+
+      } catch (err) {
+        console.error('Failed to start recording:', err);
+        const msg = err.name === 'NotAllowedError' ? 'MIC ACCESS DENIED' : err.message;
+        setStatus('error', msg);
+        recordLabel.textContent = 'Allow mic access and retry';
+        setTimeout(() => { setStatus('', 'READY'); recordLabel.textContent = 'Click to record'; }, 5000);
+      }
+    }
+
+    function stopRecording() {
+      if (!isRecording) return;
+      isRecording = false;
+      if (silenceTimeout) { clearTimeout(silenceTimeout); silenceTimeout = null; }
+      clearLevelMeter();
+
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = null;
+      }
+      if (audioCtx) {
+        audioCtx.close();
+        audioCtx = null;
+        analyser = null;
+      }
+
+      recordBtn.classList.remove('recording');
+      recordBtn.disabled = true;
+      recordLabel.textContent = 'Processing...';
+    }
+
+    function resetResults() {
+      // Stop any playing audio
+      if (currentlyPlaying) { currentlyPlaying.pause(); currentlyPlaying = null; }
+      isBroadcasting = false;
+      broadcastBtn.disabled = true;
+      broadcastBtn.classList.remove('broadcasting');
+      broadcastSection.classList.remove('visible');
+      sourcePanel.classList.remove('visible');
+      sourceText.textContent = '';
+
+      TARGET_LANGS.forEach(lang => {
+        const lc = langCards[lang];
+        lc.card.className = 'lang-card' + (lc.hasTTS ? '' : ' text-only');
+        lc.textEl.textContent = '\u2014';
+        lc.textEl.classList.add('placeholder');
+        lc.statusEl.textContent = 'Waiting';
+        if (lc.playBtn) {
+          lc.playBtn.disabled = true;
+          lc.playBtn.classList.remove('playing');
+        }
+        if (lc.audioBars) lc.audioBars.classList.remove('active');
+        if (lc.audioUrl) { URL.revokeObjectURL(lc.audioUrl); lc.audioUrl = null; }
+        lc.audioBlob = null;
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // Processing pipeline
+    // -----------------------------------------------------------------------
+    async function processRecording(audioBlob) {
+      isProcessing = true;
+      setStatus('processing', 'TRANSCRIBING...');
+
+      // Mark all cards as "ready" (waiting for translations)
+      TARGET_LANGS.forEach(lang => {
+        langCards[lang].card.classList.add('ready');
+      });
+
+      try {
+        // Step 1: Transcribe
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'recording.webm');
+        const transcribeRes = await fetch(`${BASE_PATH}/api/broadcast/transcribe`, {
+          method: 'POST', body: formData
+        });
+
+        if (!transcribeRes.ok) {
+          const err = await transcribeRes.json().catch(() => ({ detail: 'Transcription failed' }));
+          throw new Error(err.detail || 'Transcription failed');
+        }
+
+        const { text: englishText } = await transcribeRes.json();
+        sourceText.textContent = englishText;
+        sourcePanel.classList.add('visible');
+
+        // Step 2: Translate all in parallel
+        setStatus('processing', 'TRANSLATING...');
+        TARGET_LANGS.forEach(lang => {
+          langCards[lang].card.classList.remove('ready');
+          langCards[lang].card.classList.add('translating');
+          langCards[lang].statusEl.textContent = 'Translating...';
+        });
+
+        const translatePromises = TARGET_LANGS.map(lang =>
+          fetch(`${BASE_PATH}/api/broadcast/translate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: englishText, target_lang: lang }),
+          })
+          .then(async r => {
+            if (!r.ok) throw new Error('Translation failed');
+            const data = await r.json();
+            // Update card immediately
+            langCards[lang].textEl.textContent = data.text;
+            langCards[lang].textEl.classList.remove('placeholder');
+            langCards[lang].card.classList.remove('translating');
+            langCards[lang].card.classList.add('translated');
+            langCards[lang].statusEl.textContent = 'Translated';
+            return { lang, text: data.text };
+          })
+          .catch(err => {
+            langCards[lang].card.classList.remove('translating');
+            langCards[lang].statusEl.textContent = 'Error';
+            langCards[lang].textEl.textContent = 'Translation failed';
+            langCards[lang].textEl.classList.remove('placeholder');
+            return { lang, error: err.message };
+          })
+        );
+
+        const translations = await Promise.all(translatePromises);
+
+        // Step 3: TTS for TTS-capable languages, mark text-only as done
+        setStatus('processing', 'GENERATING AUDIO...');
+        const successfulTranslations = translations.filter(t => !t.error);
+
+        // Mark text-only translations as complete immediately
+        successfulTranslations.filter(t => !TTS_LANGS.has(t.lang)).forEach(t => {
+          langCards[t.lang].card.classList.add('translated');
+          langCards[t.lang].statusEl.textContent = 'Done';
+        });
+
+        // Generate TTS only for Kokoro-supported languages
+        const ttsTranslations = successfulTranslations.filter(t => TTS_LANGS.has(t.lang));
+
+        ttsTranslations.forEach(t => {
+          langCards[t.lang].card.classList.add('tts-generating');
+          langCards[t.lang].statusEl.textContent = 'Generating audio...';
+        });
+
+        const ttsPromises = ttsTranslations.map(async (t) => {
+          try {
+            const res = await fetch(`${BASE_PATH}/api/broadcast/tts`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ text: t.text, lang: t.lang }),
+            });
+            if (!res.ok) throw new Error('TTS failed');
+            const wavBlob = await res.blob();
+            const url = URL.createObjectURL(wavBlob);
+            langCards[t.lang].audioUrl = url;
+            langCards[t.lang].audioBlob = wavBlob;
+            langCards[t.lang].playBtn.disabled = false;
+            langCards[t.lang].card.classList.remove('tts-generating');
+            langCards[t.lang].card.classList.add('tts-ready');
+            langCards[t.lang].statusEl.textContent = 'Ready';
+          } catch (err) {
+            langCards[t.lang].card.classList.remove('tts-generating');
+            langCards[t.lang].statusEl.textContent = 'Audio failed';
+          }
+        });
+
+        await Promise.allSettled(ttsPromises);
+
+        // Show broadcast button if at least one TTS succeeded
+        const anyReady = TARGET_LANGS.some(l => langCards[l].audioUrl);
+        if (anyReady) {
+          broadcastSection.classList.add('visible');
+          broadcastBtn.disabled = false;
+        }
+
+        setStatus('active', 'BROADCAST READY');
+
+      } catch (err) {
+        console.error('Processing error:', err);
+        setStatus('error', err.message || 'PROCESSING ERROR');
+        setTimeout(() => setStatus('', 'READY'), 5000);
+      } finally {
+        isProcessing = false;
+        recordBtn.disabled = false;
+        recordLabel.textContent = 'Click to record';
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // Playback
+    // -----------------------------------------------------------------------
+    function playLang(lang) {
+      const lc = langCards[lang];
+      if (!lc.audioUrl) return;
+
+      // Stop current playback
+      if (currentlyPlaying) {
+        currentlyPlaying.pause();
+        currentlyPlaying.currentTime = 0;
+        // Reset previous card
+        TARGET_LANGS.forEach(l => {
+          langCards[l].card.classList.remove('playing');
+          if (langCards[l].playBtn) langCards[l].playBtn.classList.remove('playing');
+          if (langCards[l].audioBars) langCards[l].audioBars.classList.remove('active');
+        });
+      }
+
+      const audio = new Audio(lc.audioUrl);
+      currentlyPlaying = audio;
+
+      lc.card.classList.add('playing');
+      lc.playBtn.classList.add('playing');
+      lc.audioBars.classList.add('active');
+
+      audio.onended = () => {
+        lc.card.classList.remove('playing');
+        lc.playBtn.classList.remove('playing');
+        lc.audioBars.classList.remove('active');
+        if (currentlyPlaying === audio) currentlyPlaying = null;
+      };
+
+      audio.play().catch(err => {
+        console.error('Playback error:', err);
+        lc.card.classList.remove('playing');
+        lc.playBtn.classList.remove('playing');
+        lc.audioBars.classList.remove('active');
+      });
+    }
+
+    function broadcastAll() {
+      if (isBroadcasting) return;
+      const readyLangs = TARGET_LANGS.filter(l => langCards[l].audioUrl);
+      if (readyLangs.length === 0) return;
+
+      isBroadcasting = true;
+      broadcastBtn.classList.add('broadcasting');
+      broadcastBtn.disabled = true;
+
+      let i = 0;
+      function next() {
+        if (i >= readyLangs.length || !isBroadcasting) {
+          isBroadcasting = false;
+          broadcastBtn.classList.remove('broadcasting');
+          broadcastBtn.disabled = false;
+          return;
+        }
+        const lang = readyLangs[i++];
+        const lc = langCards[lang];
+        const audio = new Audio(lc.audioUrl);
+        currentlyPlaying = audio;
+
+        lc.card.classList.add('playing');
+        lc.playBtn.classList.add('playing');
+        lc.audioBars.classList.add('active');
+
+        audio.onended = () => {
+          lc.card.classList.remove('playing');
+          lc.playBtn.classList.remove('playing');
+          lc.audioBars.classList.remove('active');
+          currentlyPlaying = null;
+          setTimeout(next, 800);
+        };
+
+        audio.play().catch(() => {
+          lc.card.classList.remove('playing');
+          lc.playBtn.classList.remove('playing');
+          lc.audioBars.classList.remove('active');
+          setTimeout(next, 200);
+        });
+      }
+
+      next();
+    }
+
+    // -----------------------------------------------------------------------
+    // Event listeners
+    // -----------------------------------------------------------------------
+    recordBtn.addEventListener('click', () => {
+      if (isProcessing) return;
+      if (isRecording) {
+        stopRecording();
+      } else {
+        startRecording();
+      }
+    });
+
+    broadcastBtn.addEventListener('click', broadcastAll);
+
+    // -----------------------------------------------------------------------
+    // GPU polling
+    // -----------------------------------------------------------------------
+    async function fetchGpuOnce() {
+      try {
+        const r = await fetch(`${BASE_PATH}/api/system/stats`);
+        const d = await r.json();
+        if (d.gpu_percent != null) {
+          const pct = Math.round(d.gpu_percent);
+          document.querySelectorAll('.gpu-fill').forEach(f => f.style.width = pct + '%');
+          document.querySelectorAll('.gpu-value').forEach(v => v.textContent = pct + '%');
+        }
+      } catch (e) {}
+    }
+    fetchGpuOnce();
+    setInterval(fetchGpuOnce, 400);
+
+    // -----------------------------------------------------------------------
+    // Init
+    // -----------------------------------------------------------------------
+    initLangCards();
+  </script>
+  <script src="/shared/demo-guide.js" data-demo-id="speech-translator"></script>
+</body>
+</html>

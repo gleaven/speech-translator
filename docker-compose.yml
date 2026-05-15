@@ -1,0 +1,120 @@
+---
+services:
+
+  pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: demo-speech-translator
+    restart: unless-stopped
+    command:
+      - /bin/bash
+      - -c
+      - >-
+        python3 broadcast_server.py &
+        exec python3 s2s_pipeline.py
+        --recv_host 0.0.0.0
+        --send_host 0.0.0.0
+        --stt_model_name ${STT_MODEL:-openai/whisper-large-v3}
+        --stt_gen_task transcribe
+        --language ${TRANSLATE_LANGUAGE:-auto}
+        --llm open_api
+        --open_api_model_name ${LLM_MODEL:-gpt-oss:20b}
+        --open_api_base_url ${LLM_BASE_URL:-http://demo-ollama:11434/v1}
+        --open_api_api_key ${LLM_API_KEY:-unused}
+        --open_api_init_chat_role system
+        --open_api_init_chat_prompt "You are a translator. You receive text that may be in any language. Translate it into natural, fluent English. Output ONLY the English translation. Do NOT respond to questions, do NOT add commentary, do NOT explain. If the text is already in English, just clean up grammar and punctuation and return it."
+        --tts kokoro
+        --kokoro_voice ${KOKORO_VOICE:-af_heart}
+        --kokoro_lang_code ${KOKORO_LANG_CODE:-a}
+        --kokoro_device ${KOKORO_DEVICE:-cpu}
+    ports:
+      - "${PIPELINE_SEND_PORT:-12345}:12345/tcp"
+      - "${PIPELINE_RECV_PORT:-12346}:12346/tcp"
+      - "${BROADCAST_API_PORT:-8088}:8088/tcp"
+    environment:
+      - TRANSFORMERS_OFFLINE=${TRANSFORMERS_OFFLINE:-0}
+      - HF_HUB_OFFLINE=${HF_HUB_OFFLINE:-0}
+      - HF_TOKEN=${HF_TOKEN:-}
+    volumes:
+      - speech-translator-cache:/root/.cache/
+      - speech-translator-shared:/shared
+    depends_on:
+      ollama:
+        condition: service_started
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['0']
+              capabilities: [gpu]
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: demo-speech-translator-web
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8092}:8089"
+    volumes:
+      - speech-translator-shared:/shared
+    environment:
+      - PIPELINE_HOST=demo-speech-translator
+      - SEND_PORT=12345
+      - RECV_PORT=12346
+      - BROADCAST_API_URL=http://demo-speech-translator:8088
+    depends_on:
+      - pipeline
+
+  # ── Bundled dependencies ──
+  ollama:
+    image: ollama/ollama:latest
+    container_name: demo-ollama
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_HOST_PORT:-11434}:11434"
+    volumes:
+      - speech-translator-ollama-data:/root/.ollama
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - GGML_CUDA_ENABLE_UNIFIED_MEMORY=1
+      - OLLAMA_KEEP_ALIVE=1h
+      - OLLAMA_NUM_PARALLEL=2
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Optional HTTPS reverse proxy (--profile proxy).
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["proxy"]
+    container_name: speech-translator-caddy
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-8081}:80"
+      - "${HTTPS_PORT:-8443}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - speech-translator-caddy-data:/data
+      - speech-translator-caddy-config:/config
+    depends_on:
+      - web
+
+volumes:
+  speech-translator-cache:
+  speech-translator-shared:
+  speech-translator-ollama-data:
+  speech-translator-caddy-data:
+  speech-translator-caddy-config:

@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Speech Translator</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #0d0d14;
+      --bg-tertiary: #12121a;
+      --bg-card: #15151f;
+      --accent-primary: #00f0ff;
+      --accent-secondary: #ff00aa;
+      --accent-tertiary: #7b2dff;
+      --accent-success: #00ff88;
+      --accent-danger: #ff3366;
+      --text-primary: #ffffff;
+      --text-secondary: rgba(255, 255, 255, 0.7);
+      --text-muted: rgba(255, 255, 255, 0.4);
+      --glow-primary: 0 0 20px rgba(0, 240, 255, 0.5);
+      --glow-secondary: 0 0 20px rgba(255, 0, 170, 0.5);
+      --border-color: rgba(0, 240, 255, 0.2);
+      --font-display: 'Orbitron', sans-serif;
+      --font-body: 'Rajdhani', sans-serif;
+      --font-mono: 'Share Tech Mono', monospace;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-y: auto;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Animated cyber background */
+    .cyber-bg {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse at 20% 0%, rgba(0, 240, 255, 0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 100%, rgba(255, 0, 170, 0.06) 0%, transparent 60%),
+        var(--bg-primary);
+    }
+
+    .cyber-bg::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background:
+        repeating-linear-gradient(0deg, transparent, transparent 49px, rgba(0, 240, 255, 0.03) 49px, rgba(0, 240, 255, 0.03) 50px),
+        repeating-linear-gradient(90deg, transparent, transparent 49px, rgba(0, 240, 255, 0.03) 49px, rgba(0, 240, 255, 0.03) 50px);
+    }
+
+    .cyber-bg::after {
+      content: '';
+      position: absolute;
+      top: -10%; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.3), transparent);
+      animation: scanLine 4s linear infinite;
+    }
+
+    @keyframes scanLine {
+      0% { top: -10%; }
+      100% { top: 110%; }
+    }
+
+    /* Main container */
+    .container {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+      padding: 4.5rem 2rem 3rem;
+      max-width: 600px;
+      width: 100%;
+      margin: auto;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+    }
+
+    .badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent-primary);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      background: rgba(0, 240, 255, 0.08);
+      padding: 0.3rem 1rem;
+      border-radius: 2px;
+      margin-bottom: 1rem;
+    }
+
+    .title {
+      font-family: var(--font-display);
+      font-size: 2.2rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-tertiary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.2;
+    }
+
+    .subtitle {
+      font-family: var(--font-body);
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      margin-top: 0.5rem;
+      font-weight: 400;
+    }
+
+    /* Status indicator */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: background 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .status-dot.ready { background: var(--accent-primary); box-shadow: 0 0 8px rgba(0, 240, 255, 0.6); }
+    .status-dot.active { background: var(--accent-success); box-shadow: 0 0 8px rgba(0, 255, 136, 0.6); animation: pulse 1.5s infinite; }
+    .status-dot.error { background: var(--accent-danger); box-shadow: 0 0 8px rgba(255, 51, 102, 0.6); }
+
+    .status-text { color: var(--text-secondary); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Mic button */
+    .mic-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .mic-btn {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      border: 2px solid var(--border-color);
+      background: var(--bg-card);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.3s ease, box-shadow 0.08s ease, transform 0.08s ease;
+      position: relative;
+      outline: none;
+    }
+
+    .mic-btn:hover {
+      border-color: var(--accent-primary);
+      box-shadow: var(--glow-primary);
+      transform: scale(1.05);
+    }
+
+    .mic-btn.active {
+      border-color: var(--accent-success);
+      box-shadow: 0 0 30px rgba(0, 255, 136, 0.4), 0 0 60px rgba(0, 255, 136, 0.15);
+      /* animation controlled by JS via --mic-level custom property */
+    }
+
+    .mic-btn.active .mic-icon { fill: var(--accent-success); }
+
+    /* Rings around mic button when active */
+    .mic-btn::before, .mic-btn::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid transparent;
+      transition: all 0.4s ease;
+    }
+
+    .mic-btn::before {
+      width: 170px;
+      height: 170px;
+    }
+
+    .mic-btn::after {
+      width: 200px;
+      height: 200px;
+    }
+
+    .mic-btn.active::before {
+      border-color: rgba(0, 255, 136, 0.3);
+    }
+
+    .mic-btn.active::after {
+      border-color: rgba(0, 255, 136, 0.15);
+    }
+
+    .mic-icon {
+      width: 48px;
+      height: 48px;
+      fill: var(--accent-primary);
+      transition: fill 0.3s ease;
+    }
+
+    .mic-label {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    /* Audio level meter */
+    .level-meter {
+      display: flex;
+      gap: 3px;
+      align-items: flex-end;
+      height: 40px;
+    }
+
+    .level-bar {
+      width: 4px;
+      background: var(--accent-primary);
+      border-radius: 2px;
+      transition: height 0.08s ease;
+      min-height: 3px;
+      opacity: 0.3;
+    }
+
+    .level-bar.active { opacity: 1; }
+
+    /* Info panel */
+    .info-panel {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+
+    .info-panel-header {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--accent-primary);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .info-panel-header::before {
+      content: '>';
+      color: var(--accent-secondary);
+    }
+
+    .pipeline-stages {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .stage {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.4rem 0.8rem;
+      background: var(--bg-tertiary);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      transition: all 0.3s ease;
+    }
+
+    .stage.connected {
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
+      background: rgba(0, 240, 255, 0.05);
+    }
+
+    .stage.active {
+      border-color: var(--accent-success);
+      color: var(--accent-success);
+      background: rgba(0, 255, 136, 0.08);
+    }
+
+    .stage.active .stage-dot {
+      box-shadow: 0 0 6px rgba(0, 255, 136, 0.8);
+    }
+
+    .stage-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      transition: all 0.3s ease;
+    }
+
+    .stage-arrow {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      align-self: center;
+    }
+
+    /* Transcript panel */
+    .transcript-panel {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1.5rem;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .transcript-panel::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .transcript-panel::-webkit-scrollbar-track {
+      background: var(--bg-tertiary);
+    }
+
+    .transcript-panel::-webkit-scrollbar-thumb {
+      background: var(--accent-primary);
+      border-radius: 2px;
+    }
+
+    .transcript-entry {
+      margin-bottom: 0.8rem;
+      padding: 0.6rem 0.8rem;
+      border-radius: 6px;
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      line-height: 1.5;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .transcript-entry.user {
+      background: rgba(0, 240, 255, 0.06);
+      border-left: 3px solid var(--accent-primary);
+    }
+
+    .transcript-entry.assistant {
+      background: rgba(0, 255, 136, 0.06);
+      border-left: 3px solid var(--accent-success);
+    }
+
+    .transcript-label {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 0.2rem;
+    }
+
+    .transcript-entry.user .transcript-label { color: var(--accent-primary); }
+    .transcript-entry.assistant .transcript-label { color: var(--accent-success); }
+
+    .transcript-text {
+      color: var(--text-primary);
+    }
+
+    .transcript-empty {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-align: center;
+      letter-spacing: 0.1em;
+    }
+
+    /* Footer */
+    .footer {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    /* Navigation bar */
+    .mode-nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      padding: 0.8rem 0;
+      background: rgba(10, 10, 15, 0.92);
+      border-bottom: 1px solid var(--border-color);
+      backdrop-filter: blur(10px);
+    }
+    .mode-btn {
+      font-family: var(--font-display);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      padding: 0.5rem 1.5rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: all 0.3s;
+    }
+    .mode-btn:first-child { border-radius: 4px 0 0 4px; }
+    .mode-btn:last-child { border-radius: 0 4px 4px 0; }
+    .mode-btn.active {
+      color: var(--accent-primary);
+      border-color: var(--accent-primary);
+      background: rgba(0,240,255,0.1);
+    }
+    .mode-btn:hover:not(.active) {
+      color: var(--text-secondary);
+      border-color: rgba(255,255,255,0.2);
+    }
+
+    /* Language selector */
+    .lang-selector {
+      width: 100%;
+      position: relative;
+    }
+
+    .lang-selector-label {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+    }
+
+    .lang-selector-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .lang-selector-btn:hover {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 8px rgba(0, 240, 255, 0.2);
+    }
+
+    .lang-selector-btn .lang-arrow {
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      transition: transform 0.2s;
+    }
+
+    .lang-selector-btn.open .lang-arrow {
+      transform: rotate(180deg);
+    }
+
+    .lang-dropdown {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      margin-top: 4px;
+      background: var(--bg-card);
+      border: 1px solid var(--accent-primary);
+      border-radius: 6px;
+      z-index: 50;
+      max-height: 280px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 12px rgba(0, 240, 255, 0.15);
+    }
+
+    .lang-dropdown.open {
+      display: block;
+    }
+
+    .lang-search-input {
+      width: 100%;
+      padding: 0.6rem 1rem;
+      background: var(--bg-tertiary);
+      border: none;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    .lang-search-input::placeholder {
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+    }
+
+    .lang-options {
+      max-height: 230px;
+      overflow-y: auto;
+    }
+
+    .lang-options::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .lang-options::-webkit-scrollbar-track {
+      background: var(--bg-tertiary);
+    }
+
+    .lang-options::-webkit-scrollbar-thumb {
+      background: var(--accent-primary);
+      border-radius: 2px;
+    }
+
+    .lang-option {
+      padding: 0.5rem 1rem;
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .lang-option:hover {
+      background: rgba(0, 240, 255, 0.08);
+      color: var(--text-primary);
+    }
+
+    .lang-option.selected {
+      color: var(--accent-primary);
+      background: rgba(0, 240, 255, 0.05);
+    }
+
+    .lang-option .lang-code {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+    }
+
+    .lang-option.auto-detect {
+      border-bottom: 1px solid var(--border-color);
+      color: var(--accent-primary);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .title { font-size: 1.6rem; }
+      .mic-btn { width: 120px; height: 120px; }
+      .mic-btn::before { width: 150px; height: 150px; }
+      .mic-btn::after { width: 180px; height: 180px; }
+      .mic-icon { width: 40px; height: 40px; }
+      .pipeline-stages { flex-direction: column; }
+      .stage-arrow { display: none; }
+    }
+
+    /* GPU Inline Bar */
+    .gpu-inline-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.6rem;
+    }
+    .gpu-inline-bar .gpu-label {
+      font-family: var(--font-display);
+      font-size: 0.5rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      color: #00ff9d;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .gpu-inline-bar .gpu-pulse {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #00ff9d;
+      animation: gpuPulse 1s ease-in-out infinite;
+    }
+    @keyframes gpuPulse {
+      0%, 100% { opacity: 0.4; box-shadow: 0 0 4px #00ff9d; }
+      50% { opacity: 1; box-shadow: 0 0 10px #00ff9d; }
+    }
+    .gpu-inline-bar .gpu-track {
+      flex: 1;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 2px;
+      overflow: hidden;
+      min-width: 60px;
+    }
+    .gpu-inline-bar .gpu-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #00ff9d, #00aaff);
+      border-radius: 2px;
+      transition: width 0.3s ease;
+      box-shadow: 0 0 6px rgba(0, 255, 157, 0.4);
+    }
+    .gpu-inline-bar .gpu-value {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: #00ff9d;
+      min-width: 32px;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <div class="cyber-bg"></div>
+
+  <nav class="mode-nav">
+    <a href="#" class="mode-btn active" id="navTranslate">TRANSLATE</a>
+    <a href="#" class="mode-btn" id="navBroadcast">BROADCAST</a>
+  </nav>
+
+  <div class="container">
+    <div class="header">
+      <div class="badge">Real-Time Translation</div>
+      <h1 class="title">SPEECH TRANSLATOR</h1>
+      <p class="subtitle">Speak in any language — hear it back in English</p>
+    </div>
+
+    <div class="status-bar">
+      <div class="status-dot" id="statusDot"></div>
+      <span class="status-text" id="statusText">READY</span>
+      <div class="gpu-inline-bar">
+        <span class="gpu-label"><span class="gpu-pulse"></span>GPU</span>
+        <div class="gpu-track"><div class="gpu-fill"></div></div>
+        <span class="gpu-value">0%</span>
+      </div>
+    </div>
+
+    <div class="lang-selector">
+      <div class="lang-selector-label">Source Language</div>
+      <button class="lang-selector-btn" id="langBtn" type="button">
+        <span id="langBtnText">Auto-detect</span>
+        <span class="lang-arrow">&#9660;</span>
+      </button>
+      <div class="lang-dropdown" id="langDropdown">
+        <input type="text" class="lang-search-input" id="langSearch" placeholder="Search languages..." autocomplete="off">
+        <div class="lang-options" id="langOptions"></div>
+      </div>
+    </div>
+
+    <div class="mic-area">
+      <button class="mic-btn" id="micBtn" title="Click to start/stop">
+        <svg class="mic-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+          <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+        </svg>
+      </button>
+
+      <div class="level-meter" id="levelMeter">
+        <div class="level-bar"></div><div class="level-bar"></div><div class="level-bar"></div>
+        <div class="level-bar"></div><div class="level-bar"></div><div class="level-bar"></div>
+        <div class="level-bar"></div><div class="level-bar"></div><div class="level-bar"></div>
+        <div class="level-bar"></div><div class="level-bar"></div><div class="level-bar"></div>
+        <div class="level-bar"></div><div class="level-bar"></div><div class="level-bar"></div>
+        <div class="level-bar"></div><div class="level-bar"></div><div class="level-bar"></div>
+        <div class="level-bar"></div><div class="level-bar"></div><div class="level-bar"></div>
+        <div class="level-bar"></div><div class="level-bar"></div><div class="level-bar"></div>
+      </div>
+
+      <span class="mic-label" id="micLabel">Click to start</span>
+    </div>
+
+    <div class="info-panel">
+      <div class="info-panel-header">Pipeline Status</div>
+      <div class="pipeline-stages">
+        <div class="stage" id="stageVAD"><div class="stage-dot"></div>VAD</div>
+        <span class="stage-arrow">&rarr;</span>
+        <div class="stage" id="stageSTT"><div class="stage-dot"></div>Whisper STT</div>
+        <span class="stage-arrow">&rarr;</span>
+        <div class="stage" id="stageLLM"><div class="stage-dot"></div>LLM Cleanup</div>
+        <span class="stage-arrow">&rarr;</span>
+        <div class="stage" id="stageTTS"><div class="stage-dot"></div>Kokoro TTS</div>
+      </div>
+    </div>
+
+    <div class="transcript-panel" id="transcriptPanel">
+      <div class="info-panel-header">Transcription</div>
+      <div id="transcriptList">
+        <div class="transcript-empty">Transcriptions will appear here...</div>
+      </div>
+    </div>
+
+    <div class="footer">
+      Whisper Large V3 &middot; Ollama gpt-oss:20b &middot; Kokoro TTS &middot; 16 kHz PCM
+    </div>
+  </div>
+
+  <script>
+    const SAMPLE_RATE = 16000;
+    const CHUNK_SIZE = 1024; // bytes to send per message (512 int16 samples)
+    const transcriptList = document.getElementById('transcriptList');
+    const transcriptPanel = document.getElementById('transcriptPanel');
+
+    const LANG_NAMES = {
+      en: 'English', zh: 'Chinese', de: 'German', es: 'Spanish', ru: 'Russian',
+      ko: 'Korean', fr: 'French', ja: 'Japanese', pt: 'Portuguese', tr: 'Turkish',
+      pl: 'Polish', ca: 'Catalan', nl: 'Dutch', ar: 'Arabic', sv: 'Swedish',
+      it: 'Italian', id: 'Indonesian', hi: 'Hindi', fi: 'Finnish', vi: 'Vietnamese',
+      he: 'Hebrew', uk: 'Ukrainian', el: 'Greek', ms: 'Malay', cs: 'Czech',
+      ro: 'Romanian', da: 'Danish', hu: 'Hungarian', ta: 'Tamil', no: 'Norwegian',
+      th: 'Thai', ur: 'Urdu', hr: 'Croatian', bg: 'Bulgarian', lt: 'Lithuanian',
+      la: 'Latin', mi: 'Maori', ml: 'Malayalam', cy: 'Welsh', sk: 'Slovak',
+      te: 'Telugu', fa: 'Persian', lv: 'Latvian', bn: 'Bengali', sr: 'Serbian',
+      az: 'Azerbaijani', sl: 'Slovenian', kn: 'Kannada', et: 'Estonian',
+      mk: 'Macedonian', br: 'Breton', eu: 'Basque', is: 'Icelandic',
+      hy: 'Armenian', ne: 'Nepali', mn: 'Mongolian', bs: 'Bosnian', kk: 'Kazakh',
+      sq: 'Albanian', sw: 'Swahili', gl: 'Galician', mr: 'Marathi', pa: 'Punjabi',
+      si: 'Sinhala', km: 'Khmer', sn: 'Shona', yo: 'Yoruba', so: 'Somali',
+      af: 'Afrikaans', oc: 'Occitan', ka: 'Georgian', be: 'Belarusian',
+      tg: 'Tajik', sd: 'Sindhi', gu: 'Gujarati', am: 'Amharic', yi: 'Yiddish',
+      lo: 'Lao', uz: 'Uzbek', fo: 'Faroese', ht: 'Haitian Creole', ps: 'Pashto',
+      tk: 'Turkmen', nn: 'Nynorsk', mt: 'Maltese', sa: 'Sanskrit',
+      lb: 'Luxembourgish', my: 'Myanmar', bo: 'Tibetan', tl: 'Tagalog',
+      mg: 'Malagasy', as: 'Assamese', tt: 'Tatar', haw: 'Hawaiian', ln: 'Lingala',
+      ha: 'Hausa', ba: 'Bashkir', jw: 'Javanese', su: 'Sundanese', yue: 'Cantonese',
+    };
+
+    // --- Source Language Selector ---
+    let selectedLang = 'auto';
+    const langBtn = document.getElementById('langBtn');
+    const langBtnText = document.getElementById('langBtnText');
+    const langDropdown = document.getElementById('langDropdown');
+    const langSearch = document.getElementById('langSearch');
+    const langOptions = document.getElementById('langOptions');
+
+    // Build sorted language list (alphabetical by name)
+    const LANG_LIST = Object.entries(LANG_NAMES)
+      .map(([code, name]) => ({ code, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    function renderLangOptions(filter = '') {
+      const q = filter.toLowerCase();
+      const filtered = q
+        ? LANG_LIST.filter(l => l.name.toLowerCase().includes(q) || l.code.includes(q))
+        : LANG_LIST;
+
+      let html = `<div class="lang-option auto-detect${selectedLang === 'auto' ? ' selected' : ''}" data-code="auto">Auto-detect</div>`;
+      for (const l of filtered) {
+        html += `<div class="lang-option${selectedLang === l.code ? ' selected' : ''}" data-code="${l.code}">
+          <span>${l.name}</span><span class="lang-code">${l.code}</span>
+        </div>`;
+      }
+      langOptions.innerHTML = html;
+    }
+
+    function openDropdown() {
+      langDropdown.classList.add('open');
+      langBtn.classList.add('open');
+      langSearch.value = '';
+      renderLangOptions();
+      setTimeout(() => langSearch.focus(), 50);
+    }
+
+    function closeDropdown() {
+      langDropdown.classList.remove('open');
+      langBtn.classList.remove('open');
+    }
+
+    async function selectLanguage(code) {
+      selectedLang = code;
+      langBtnText.textContent = code === 'auto' ? 'Auto-detect' : LANG_NAMES[code] || code;
+      closeDropdown();
+      // Send hint to backend
+      try {
+        const basePath = location.pathname.replace(/\/+$/, '');
+        await fetch(`${basePath}/api/language-hint`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ language: code }),
+        });
+      } catch (e) {
+        console.error('Failed to set language hint:', e);
+      }
+    }
+
+    langBtn.addEventListener('click', () => {
+      if (langDropdown.classList.contains('open')) {
+        closeDropdown();
+      } else {
+        openDropdown();
+      }
+    });
+
+    langSearch.addEventListener('input', () => {
+      renderLangOptions(langSearch.value);
+    });
+
+    langOptions.addEventListener('click', (e) => {
+      const opt = e.target.closest('.lang-option');
+      if (opt) selectLanguage(opt.dataset.code);
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.lang-selector')) closeDropdown();
+    });
+
+    // Keyboard navigation
+    langSearch.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeDropdown();
+      if (e.key === 'Enter') {
+        const first = langOptions.querySelector('.lang-option');
+        if (first) selectLanguage(first.dataset.code);
+      }
+    });
+
+    // Load current hint on page load
+    (async () => {
+      try {
+        const basePath = location.pathname.replace(/\/+$/, '');
+        const r = await fetch(`${basePath}/api/language-hint`);
+        const d = await r.json();
+        if (d.language && d.language !== 'auto') {
+          selectedLang = d.language;
+          langBtnText.textContent = LANG_NAMES[d.language] || d.language;
+        }
+      } catch (e) {}
+    })();
+
+    function addTranscript(type, text, lang) {
+      // Remove the empty placeholder
+      const empty = transcriptList.querySelector('.transcript-empty');
+      if (empty) empty.remove();
+
+      const entry = document.createElement('div');
+      entry.className = 'transcript-entry ' + type;
+      let label;
+      if (type === 'user') {
+        const langName = LANG_NAMES[lang] || lang || '';
+        label = langName ? `You said (${langName})` : 'You said';
+      } else {
+        label = 'English Translation';
+      }
+      entry.innerHTML = `<div class="transcript-label">${label}</div><div class="transcript-text">${escapeHtml(text)}</div>`;
+      transcriptList.appendChild(entry);
+      transcriptPanel.scrollTop = transcriptPanel.scrollHeight;
+    }
+
+    function clearTranscripts() {
+      transcriptList.innerHTML = '<div class="transcript-empty">Transcriptions will appear here...</div>';
+    }
+
+    function escapeHtml(text) {
+      const d = document.createElement('div');
+      d.textContent = text;
+      return d.innerHTML;
+    }
+
+    let ws = null;
+    let audioCtx = null;
+    let mediaStream = null;
+    let scriptNode = null;
+    let isStreaming = false;
+
+    // Playback queue with scheduled timing for gapless audio
+    let playbackQueue = [];
+    let isPlaying = false;
+    let nextPlaybackTime = 0;
+
+    const micBtn = document.getElementById('micBtn');
+    const micLabel = document.getElementById('micLabel');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const levelMeter = document.getElementById('levelMeter');
+    const bars = levelMeter.querySelectorAll('.level-bar');
+
+    const stageVAD = document.getElementById('stageVAD');
+    const stageSTT = document.getElementById('stageSTT');
+    const stageLLM = document.getElementById('stageLLM');
+    const stageTTS = document.getElementById('stageTTS');
+
+    function setStatus(state, text) {
+      statusDot.className = 'status-dot ' + state;
+      statusText.textContent = text;
+    }
+
+    const allStages = [stageVAD, stageSTT, stageLLM, stageTTS];
+    let speechDetected = false;
+    let silenceTimer = null;
+    let lastAudioLevel = 0;
+
+    function setStageState(stage, state) {
+      // state: '', 'connected', 'active'
+      stage.classList.remove('connected', 'active');
+      if (state) stage.classList.add(state);
+    }
+
+    function setAllStagesConnected() {
+      allStages.forEach(s => setStageState(s, 'connected'));
+    }
+
+    function clearAllStages() {
+      allStages.forEach(s => setStageState(s, ''));
+    }
+
+    function setStageActive(stage) {
+      setStageState(stage, 'active');
+    }
+
+    // Called when audio level suggests speech has ended
+    function onSpeechEnd() {
+      if (!isStreaming) return;
+      speechDetected = false;
+      setStageState(stageVAD, 'connected');
+      setStageActive(stageSTT);
+      setTimeout(() => {
+        if (!isStreaming) return;
+        setStageState(stageSTT, 'connected');
+        setStageActive(stageLLM);
+      }, 2000);
+      setTimeout(() => {
+        if (!isStreaming) return;
+        setStageState(stageLLM, 'connected');
+        setStageActive(stageTTS);
+      }, 4000);
+    }
+
+    // Called when translated audio arrives from pipeline
+    function onTranslatedAudioReceived() {
+      setStageState(stageSTT, 'connected');
+      setStageState(stageLLM, 'connected');
+      setStageActive(stageTTS);
+    }
+
+    // Called when playback finishes
+    function onPlaybackDone() {
+      if (!isStreaming) return;
+      setStageState(stageTTS, 'connected');
+      setStageActive(stageVAD);
+    }
+
+    function updateLevelMeter(audioData) {
+      const numBars = bars.length;
+      const blockSize = Math.floor(audioData.length / numBars);
+      let totalLevel = 0;
+      for (let i = 0; i < numBars; i++) {
+        let sum = 0;
+        for (let j = 0; j < blockSize; j++) {
+          sum += Math.abs(audioData[i * blockSize + j]);
+        }
+        const avg = sum / blockSize;
+        totalLevel += avg;
+        const height = Math.max(3, Math.min(40, avg * 300));
+        bars[i].style.height = height + 'px';
+        bars[i].classList.toggle('active', avg > 0.01);
+      }
+      lastAudioLevel = totalLevel / numBars;
+
+      // Mic button reacts to audio level
+      if (isStreaming) {
+        const intensity = Math.min(1, lastAudioLevel * 15);
+        const scale = 1 + intensity * 0.12;
+        const glowBase = 30 + intensity * 40;
+        const glowOuter = 60 + intensity * 60;
+        const alpha1 = 0.4 + intensity * 0.5;
+        const alpha2 = 0.15 + intensity * 0.35;
+        micBtn.style.transform = `scale(${scale})`;
+        micBtn.style.boxShadow = `0 0 ${glowBase}px rgba(0, 255, 136, ${alpha1}), 0 0 ${glowOuter}px rgba(0, 255, 136, ${alpha2})`;
+        // Also pulse the ring borders
+        const ringAlpha = 0.15 + intensity * 0.4;
+        micBtn.style.setProperty('--ring-alpha', ringAlpha);
+      }
+
+      // Detect speech activity for stage indicators
+      const SPEECH_THRESHOLD = 0.01;
+      if (lastAudioLevel > SPEECH_THRESHOLD) {
+        speechDetected = true;
+        setStageActive(stageVAD);
+        if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
+      } else if (speechDetected && !silenceTimer) {
+        // Speech just ended — wait a moment then trigger processing stages
+        silenceTimer = setTimeout(() => {
+          silenceTimer = null;
+          onSpeechEnd();
+        }, 1200);
+      }
+    }
+
+    function clearLevelMeter() {
+      bars.forEach(b => { b.style.height = '3px'; b.classList.remove('active'); });
+    }
+
+    // Float32 [-1, 1] to Int16 bytes
+    function float32ToInt16Bytes(float32Array) {
+      const int16 = new Int16Array(float32Array.length);
+      for (let i = 0; i < float32Array.length; i++) {
+        const s = Math.max(-1, Math.min(1, float32Array[i]));
+        int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+      }
+      return new Uint8Array(int16.buffer);
+    }
+
+    // Int16 bytes to Float32 [-1, 1]
+    function int16BytesToFloat32(bytes) {
+      const int16 = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2);
+      const float32 = new Float32Array(int16.length);
+      for (let i = 0; i < int16.length; i++) {
+        float32[i] = int16[i] / 0x8000;
+      }
+      return float32;
+    }
+
+    function playAudioChunk(float32Data) {
+      if (!audioCtx) return;
+      const buffer = audioCtx.createBuffer(1, float32Data.length, SAMPLE_RATE);
+      buffer.getChannelData(0).set(float32Data);
+
+      // Schedule buffer at precise time for gapless playback
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioCtx.destination);
+
+      const now = audioCtx.currentTime;
+      if (!isPlaying || nextPlaybackTime <= now) {
+        nextPlaybackTime = now;
+      }
+
+      source.start(nextPlaybackTime);
+      nextPlaybackTime += buffer.duration;
+      isPlaying = true;
+
+      // Detect when all scheduled audio has finished
+      source.onended = () => {
+        if (audioCtx && audioCtx.currentTime >= nextPlaybackTime - 0.01) {
+          isPlaying = false;
+          nextPlaybackTime = 0;
+          onPlaybackDone();
+        }
+      };
+    }
+
+    async function startStreaming() {
+      try {
+        // Get mic access
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            sampleRate: SAMPLE_RATE,
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true,
+          }
+        });
+
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE });
+        const source = audioCtx.createMediaStreamSource(mediaStream);
+
+        // ScriptProcessorNode for raw PCM access
+        const bufferSize = 4096;
+        scriptNode = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+
+        // Connect WebSocket
+        const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const basePath = location.pathname.replace(/\/+$/, '');
+        ws = new WebSocket(`${proto}//${location.host}${basePath}/ws`);
+        ws.binaryType = 'arraybuffer';
+
+        ws.onopen = () => {
+          setStatus('active', 'LISTENING');
+          setAllStagesConnected();
+          setStageActive(stageVAD);
+          micBtn.classList.add('active');
+          micLabel.textContent = 'Click to stop';
+          isStreaming = true;
+
+          // Start sending audio
+          scriptNode.onaudioprocess = (e) => {
+            if (!isStreaming || !ws || ws.readyState !== WebSocket.OPEN) return;
+            const inputData = e.inputBuffer.getChannelData(0);
+            updateLevelMeter(inputData);
+            const bytes = float32ToInt16Bytes(inputData);
+            // Send in chunks
+            for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+              const chunk = bytes.slice(i, i + CHUNK_SIZE);
+              ws.send(chunk);
+            }
+          };
+
+          source.connect(scriptNode);
+          scriptNode.connect(audioCtx.destination);
+        };
+
+        ws.onmessage = (event) => {
+          if (typeof event.data === 'string') {
+            try {
+              const msg = JSON.parse(event.data);
+              if (msg.type === 'error') {
+                setStatus('error', msg.message || 'PIPELINE ERROR');
+                micLabel.textContent = msg.message || 'Pipeline error';
+                setTimeout(() => stopStreaming(), 1000);
+              } else if (msg.type === 'transcript') {
+                addTranscript(msg.source || 'user', msg.text || '', msg.lang || '');
+              }
+            } catch (e) { /* ignore */ }
+            return;
+          }
+          if (event.data instanceof ArrayBuffer) {
+            const bytes = new Uint8Array(event.data);
+            const float32 = int16BytesToFloat32(bytes);
+            onTranslatedAudioReceived();
+            playAudioChunk(float32);
+          }
+        };
+
+        ws.onerror = (e) => {
+          console.error('WebSocket error:', e);
+          setStatus('error', 'CONNECTION ERROR');
+        };
+
+        ws.onclose = (e) => {
+          console.log('WebSocket closed:', e.code, e.reason);
+          if (isStreaming) stopStreaming();
+        };
+
+        setStatus('ready', 'CONNECTING...');
+
+      } catch (err) {
+        console.error('Failed to start:', err);
+        setStatus('error', err.name === 'NotAllowedError' ? 'MIC ACCESS DENIED' : err.message);
+        micLabel.textContent = err.name === 'NotAllowedError'
+          ? 'Allow mic access and retry'
+          : 'Error: ' + err.message;
+        setTimeout(() => { setStatus('', 'READY'); micLabel.textContent = 'Click to start'; }, 5000);
+      }
+    }
+
+    function stopStreaming() {
+      isStreaming = false;
+
+      if (scriptNode) {
+        scriptNode.disconnect();
+        scriptNode = null;
+      }
+
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = null;
+      }
+
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+      ws = null;
+
+      if (audioCtx) {
+        audioCtx.close();
+        audioCtx = null;
+      }
+
+      playbackQueue = [];
+      isPlaying = false;
+      nextPlaybackTime = 0;
+
+      micBtn.classList.remove('active');
+      micBtn.style.transform = '';
+      micBtn.style.boxShadow = '';
+      micLabel.textContent = 'Click to start';
+      setStatus('', 'READY');
+      clearAllStages();
+      clearLevelMeter();
+      speechDetected = false;
+      if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
+    }
+
+    micBtn.addEventListener('click', () => {
+      if (isStreaming) {
+        stopStreaming();
+      } else {
+        startStreaming();
+      }
+    });
+
+    // GPU Polling
+    let gpuPollInterval = null;
+    function updateGpuBars(percent) {
+      document.querySelectorAll('.gpu-fill').forEach(f => f.style.width = percent + '%');
+      document.querySelectorAll('.gpu-value').forEach(v => v.textContent = percent + '%');
+    }
+    async function fetchGpuOnce() {
+      try {
+        const r = await fetch('/api/system/stats');
+        const d = await r.json();
+        if (d.gpu_percent != null) updateGpuBars(Math.round(d.gpu_percent));
+      } catch (e) {}
+    }
+    function startGpuPolling() {
+      fetchGpuOnce();
+      gpuPollInterval = setInterval(fetchGpuOnce, 400);
+    }
+    startGpuPolling();
+
+    // Navigation links
+    const navBasePath = location.pathname.replace(/\/+$/, '');
+    document.getElementById('navTranslate').href = navBasePath + '/';
+    document.getElementById('navBroadcast').href = navBasePath + '/broadcast';
+  </script>
+    <script src="/shared/demo-guide.js" data-demo-id="speech-translator"></script>
+</body>
+</html>

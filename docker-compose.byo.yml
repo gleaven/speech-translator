@@ -1,0 +1,12 @@
+# BYO override: skip the bundled Ollama and route the translation LLM at
+# any OpenAI-compatible endpoint (your own Ollama, LiteLLM proxy, etc.).
+# Set LLM_BASE_URL (and LLM_API_KEY if needed) in .env, then start with:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.byo.yml up -d
+
+services:
+  ollama:
+    deploy:
+      replicas: 0
+  pipeline:
+    depends_on: !reset []
