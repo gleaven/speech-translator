@@ -525,6 +525,65 @@ Built by Andrew Meinecke.
 Based on the open-source
 [`speech-to-speech`](https://github.com/huggingface/speech-to-speech)
 pipeline by The HuggingFace Inc. team, distributed under the Apache
-License 2.0 (see `LICENSE`). Bundled models — Whisper, NLLB-200,
-Kokoro 82M, faster-whisper — retain their respective upstream
-licenses.
+License 2.0 (see `LICENSE`).
+
+## Components & Licensing
+
+This demo is released under Apache License 2.0 (see `LICENSE`). It
+bundles or wraps the following third-party components, each retaining
+its own license:
+
+**Code dependencies (compiled into the container image):**
+
+| Component | License | Use in this demo |
+|---|---|---|
+| HuggingFace [`speech-to-speech`](https://github.com/huggingface/speech-to-speech) | Apache 2.0 | Pipeline scaffold (VAD → STT → LLM → TTS handlers) |
+| [PyTorch nightly + cu128](https://github.com/pytorch/pytorch) | BSD-3 | GPU autodiff (Blackwell `sm_120+`) |
+| HuggingFace [`transformers`](https://github.com/huggingface/transformers) (incl. NLLB tokenizer / sentencepiece) | Apache 2.0 | Model loading |
+| [`faster-whisper`](https://github.com/SYSTRAN/faster-whisper) | MIT | CTranslate2-accelerated Whisper inference |
+| [`parler-tts`](https://github.com/huggingface/parler-tts) | Apache 2.0 | Description-conditioned TTS handler |
+| [MeloTTS](https://github.com/myshell-ai/MeloTTS) (`andimarafioti` fork pinned in `requirements.txt`) | MIT | Multi-lingual TTS handler |
+| [**ChatTTS**](https://github.com/2noise/ChatTTS) | **AGPL-3.0+** (code) / **CC BY-NC 4.0** (model weights) | Optional TTS handler |
+| [Moonshine](https://github.com/usefulsensors/moonshine) (`andimarafioti` fork pinned in `requirements.txt`) | MIT | Optional small-footprint STT |
+| [Kokoro](https://github.com/hexgrad/kokoro) (`kokoro` PyPI package) | Apache 2.0 | Default TTS handler in Broadcast mode |
+| [FunASR](https://github.com/modelscope/FunASR) | MIT | Optional Paraformer STT |
+| [ModelScope](https://github.com/modelscope/modelscope) | Apache 2.0 | Model registry / loader for FunASR weights |
+| [DeepFilterNet](https://github.com/Rikorose/DeepFilterNet) | MIT / Apache 2.0 (dual) | Real-time noise suppression |
+| [Silero VAD](https://github.com/snakers4/silero-vad) | MIT | Voice activity detection |
+| [NLTK](https://github.com/nltk/nltk) | Apache 2.0 | Tokenizer assets (`punkt_tab`, etc.) |
+| [eSpeak NG](https://github.com/espeak-ng/espeak-ng) (apt package) | GPL-3.0 | Phonemizer binary called by some TTS pipelines |
+| [FFmpeg](https://github.com/FFmpeg/FFmpeg) (apt package) | LGPL-2.1+ / GPL-2+ (config-dependent) | Audio decode |
+| [FastAPI](https://github.com/fastapi/fastapi) | MIT | Broadcast-mode API + WebSocket |
+| [Ollama](https://github.com/ollama/ollama) (bundled service in `docker-compose.yml`) | MIT | Local translation LLM |
+| [NVIDIA CUDA base image](https://hub.docker.com/r/nvidia/cuda) | NVIDIA Deep Learning Container Software License | GPU runtime |
+| [Caddy](https://github.com/caddyserver/caddy) (optional `--profile proxy`) | Apache 2.0 | HTTPS termination |
+
+**Model weights (downloaded from HuggingFace at runtime by the
+container, not redistributed in this repo):**
+
+| Model | License | Notes |
+|---|---|---|
+| [OpenAI Whisper](https://huggingface.co/openai/whisper-large-v3) (`STT_MODEL` default) | MIT | Permissive |
+| [Kokoro 82M](https://huggingface.co/hexgrad/Kokoro-82M) (Broadcast TTS default) | Apache 2.0 | Permissive |
+| [**NLLB-200 distilled-600M**](https://huggingface.co/facebook/nllb-200-distilled-600M) (Broadcast translation) | **CC BY-NC 4.0** | Research / non-commercial; Meta states the model is "not released for production deployment" |
+| LLM served by the bundled Ollama (`gpt-oss:20b` by default) | per chosen model | Override via `LLM_MODEL` |
+
+### License notes
+
+- The **default Translate mode** (Whisper + Ollama LLM + Kokoro) uses
+  only permissive licenses.
+- **Broadcast mode** loads
+  [NLLB-200](https://huggingface.co/facebook/nllb-200-distilled-600M)
+  for many-language translation. NLLB-200 is **CC BY-NC 4.0** and is
+  designated by Meta as a research-only model not authorised for
+  production deployment.
+- **ChatTTS** is listed in `requirements.txt` because the upstream
+  `speech-to-speech` package wires it up as an optional TTS handler.
+  It is **AGPL-3.0+** code and **CC BY-NC 4.0** model weights. The
+  default pipeline does not load it; if you switch to it
+  (`--tts chat_tts`), both restrictions apply.
+- **eSpeak NG** (GPL-3.0) and the **FFmpeg** apt build (LGPL/GPL,
+  depending on configure flags) are invoked as separate processes;
+  redistributing the built container image redistributes their
+  binaries — read each project's source-availability requirements
+  before doing so.
